@@ -1,45 +1,9 @@
 name: build
 
 on:
-  push:
-  schedule:
-    - cron: '0 0 1 * *'
+  push
 
 jobs:
-  build-linux-ubuntu:
-    runs-on: ubuntu-latest
-    steps:
-    - name: install dependencies
-      run: |
-          sudo apt-get update
-          sudo apt-get install cython3
-    - name: prepare environment
-      run: |
-          echo "target_triplet=`gcc -dumpmachine`" >> $GITHUB_ENV
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    - name: autogen
-      run: |
-          export PYTHON=python3
-          export LDFLAGS="-Wl,-rpath=/usr/local/lib"
-          ./autogen.sh --enable-debug
-    - name: make
-      run: make
-    - name: make check
-      run: make check
-    - name: make install
-      run: sudo make install
-    - name: prepare artifact
-      run: |
-          mkdir -p dest
-          DESTDIR=`pwd`/dest make install
-          tar -C dest -cf libplist.tar usr
-    - name: publish artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: libplist-latest_${{env.target_triplet}}
-        path: libplist.tar
   build-macOS:
     runs-on: macOS-latest
     steps:
@@ -93,70 +57,4 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: libplist-latest_macOS
-        path: libplist.tar
-  build-windows:
-    runs-on: windows-2019
-    defaults:
-      run:
-        shell: msys2 {0}
-    strategy:
-      fail-fast: false
-      matrix:
-        include: [
-          { msystem: MINGW64, arch: x86_64 },
-          { msystem: MINGW32, arch: i686   }
-        ]
-    steps:
-    - uses: msys2/setup-msys2@v2
-      with:
-        msystem: ${{ matrix.msystem }}
-        release: false
-        update: false
-        install: >-
-          base-devel
-          git
-          mingw-w64-${{ matrix.arch }}-gcc
-          make
-          libtool
-          autoconf
-          automake-wrapper
-          cython
-    - name: prepare environment
-      run: |
-          dest=`echo ${{ matrix.msystem }} |tr [:upper:] [:lower:]`
-          echo "dest=$dest" >> $GITHUB_ENV
-          echo "target_triplet=`gcc -dumpmachine`" >> $GITHUB_ENV
-          git config --global core.autocrlf false
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    - name: autogen
-      run: ./autogen.sh CC=gcc CXX=g++ --enable-debug
-    - name: make
-      run: make
-    - name: make check
-      run: make check
-    - name: print test logs
-      run: |
-          for I in test/*.trs; do
-            RES=`grep ":test-result" $I |cut -d ":" -f 3`
-            if test $RES != PASS; then
-              TESTNAME=`basename $I .trs`
-              echo $TESTNAME:
-              cat test/$TESTNAME.log
-              echo
-            fi
-          done
-      shell: bash
-    - name: make install
-      run: make install
-    - name: prepare artifact
-      run: |
-          mkdir -p dest
-          DESTDIR=`pwd`/dest make install
-          tar -C dest -cf libplist.tar ${{ env.dest }}
-    - name: publish artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: libplist-latest_${{ matrix.arch }}-${{ env.dest }}
         path: libplist.tar

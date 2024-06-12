@@ -14,9 +14,9 @@ jobs:
           else
             brew install libtool autoconf automake
           fi
-          pip3 install cython
+          pip3 install --break-system-packages cython
       shell: bash
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
     - name: autogen
@@ -54,7 +54,7 @@ jobs:
           DESTDIR=`pwd`/dest make install
           tar -C dest -cf libplist.tar usr
     - name: publish artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: libplist-latest_macOS
         path: libplist.tar
